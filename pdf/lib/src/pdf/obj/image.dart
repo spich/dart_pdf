@@ -20,6 +20,7 @@ import 'package:image/image.dart' as im;
 
 import '../document.dart';
 import '../exif.dart';
+import '../format/array.dart';
 import '../format/indirect.dart';
 import '../format/name.dart';
 import '../format/num.dart';
@@ -65,12 +66,7 @@ class PdfImage extends PdfXObject {
     bool alpha = true,
     PdfImageOrientation orientation = PdfImageOrientation.topLeft,
   }) {
-    final im = PdfImage._(
-      pdfDocument,
-      width,
-      height,
-      orientation,
-    );
+    final im = PdfImage._(pdfDocument, width, height, orientation);
 
     assert(() {
       im.startStopwatch();
@@ -143,7 +139,14 @@ class PdfImage extends PdfXObject {
     im.params['/Intent'] = const PdfName('/RelativeColorimetric');
     im.params['/Filter'] = const PdfName('/DCTDecode');
 
-    if (info.isRGB) {
+    if (info.isCMYK) {
+      im.params['/ColorSpace'] = const PdfName('/DeviceCMYK');
+      if (info.isCMYKInverted) {
+        // CMYK JPEGs from Adobe use inverted values (YCCK encoding).
+        // The /Decode array inverts each component back to proper CMYK.
+        im.params['/Decode'] = PdfArray.fromNum(<int>[1, 0, 1, 0, 1, 0, 1, 0]);
+      }
+    } else if (info.isRGB) {
       im.params['/ColorSpace'] = const PdfName('/DeviceRGB');
     } else {
       im.params['/ColorSpace'] = const PdfName('/DeviceGray');
@@ -202,12 +205,7 @@ class PdfImage extends PdfXObject {
     int height,
     PdfImageOrientation orientation,
   ) {
-    final im = PdfImage._(
-      pdfDocument,
-      width,
-      height,
-      orientation,
-    );
+    final im = PdfImage._(pdfDocument, width, height, orientation);
 
     assert(() {
       im.startStopwatch();
